@@ -1,6 +1,8 @@
 import mongoose from "mongoose"; 
 import {model,Schema}  from "mongoose";
-mongoose.connect("mongodb+srv://abhinan6u:c2jWBWmbcXfFUeLW@cluster0.g44ge.mongodb.net/brainly")
+import "dotenv/config"
+//@ts-ignore
+mongoose.connect(process.env.MONGODB_URI)
 const userSchema = new Schema({
     username : {type:String, required : true},
     password : String

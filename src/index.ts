@@ -2,10 +2,13 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import { userModel } from "./db";
 import mongoose from "mongoose";
-import { JWT_PASSWORD } from "./config";
+import "dotenv/config";
 import { contentModel } from "./db";
 import { usermiddleware } from "./middleware";
+
+
 const app = express()
+const JWT_PASSWORD = process.env.JWT_PASSWORD;
 app.use(express.json())
 app.post("/api/v1/signup",async(req,res)=>{
     //zod validation && hash the password
@@ -30,7 +33,7 @@ app.post("/api/v1/signin",async(req,res)=>{
         password
     })
     if(existinguser){
-        
+        //@ts-ignore
         const token = jwt.sign({id:existinguser._id},JWT_PASSWORD)
         res.json({
             token

@@ -15,10 +15,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const db_1 = require("./db");
-const config_1 = require("./config");
+require("dotenv/config");
 const db_2 = require("./db");
 const middleware_1 = require("./middleware");
+const utils_1 = require("./utils");
 const app = (0, express_1.default)();
+const JWT_PASSWORD = process.env.JWT_PASSWORD;
 app.use(express_1.default.json());
 app.post("/api/v1/signup", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     //zod validation && hash the password
@@ -40,7 +42,8 @@ app.post("/api/v1/signin", (req, res) => __awaiter(void 0, void 0, void 0, funct
         password
     });
     if (existinguser) {
-        const token = jsonwebtoken_1.default.sign({ id: existinguser._id }, config_1.JWT_PASSWORD);
+        //@ts-ignore
+        const token = jsonwebtoken_1.default.sign({ id: existinguser._id }, JWT_PASSWORD);
         res.json({
             token
         });
@@ -67,10 +70,73 @@ app.get("/api/v1/content", middleware_1.usermiddleware, (req, res) => __awaiter(
     const content = yield db_2.contentModel.find({ userid: userid }).populate("userid", "username");
     res.json({ content });
 }));
-app.delete("/api/v1/content", (req, res) => {
-});
-app.post("/api/v1/brain/share", (req, res) => {
-});
-app.post(" /api/v1/brain/:shareLink", (req, res) => {
-});
+app.delete("/api/v1/content", middleware_1.usermiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const contentId = req.body.contentId;
+    yield db_2.contentModel.deleteMany({
+        contentId,
+        // @ts-ignore
+        userid: req.userId
+    });
+    res.json({ message: "content deleted!!" });
+}));
+app.post("/api/v1/brain/share", middleware_1.usermiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const share = req.body.share;
+    if (share) {
+        const existingLink = yield db_1.linkModel.findOne({
+            userid: req.userId,
+        });
+        if (existingLink) {
+            res.json({
+                hash: existingLink.hash
+            });
+            return;
+        }
+        const hash = (0, utils_1.random)(10);
+        yield db_1.linkModel.create({
+            userId: req.userId,
+            hash: hash
+        });
+        res.json({
+            hash
+        });
+    }
+    else {
+        yield db_1.linkModel.deleteOne({
+            userId: req.userId
+        });
+        res.json({
+            message: "Removed link"
+        });
+    }
+}));
+app.get(" /api/v1/brain/:shareLink", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const hash = req.params.shareLink;
+    const link = yield db_1.linkModel.findOne({
+        hash
+    });
+    if (!link) {
+        res.status(411).json({
+            message: "Sorry incorrect input"
+        });
+        return;
+    }
+    // userId
+    const content = yield db_2.contentModel.find({
+        userId: link.userid
+    });
+    console.log(link);
+    const user = yield db_1.userModel.findOne({
+        _id: link.userid
+    });
+    if (!user) {
+        res.status(411).json({
+            message: "user not found, error should ideally not happen"
+        });
+        return;
+    }
+    res.json({
+        username: user.username,
+        content: content
+    });
+}));
 app.listen(3000);
